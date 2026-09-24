@@ -1,0 +1,52 @@
+manifest_version: 2
+name: hermes-kev-router
+version: 0.1.0
+description: Local Kev pre-turn routing that narrows built-in tool schemas without modifying Hermes core.
+author: nmavor
+license: MIT
+homepage: https://github.com/nmavor/hermes-kev-router
+requires_hermes: ">=0.21"
+kind: standalone
+tags:
+  - routing
+  - tools
+  - kev
+  - local
+provides_tools: []
+provides_hooks:
+  - pre_llm_call
+  - post_llm_call
+  - on_session_end
+provides_middleware:
+  - llm_request
+requires_env: []
+config_schema:
+  enabled:
+    type: bool
+    default: true
+    description: Route each user turn through the configured local Kev endpoint.
+  endpoint:
+    type: str
+    default: http://127.0.0.1:8009/v1/systemone
+  model:
+    type: str
+    default: kev-latest
+  timeout:
+    type: float
+    default: 1.25
+  min_probability:
+    type: float
+    default: 0.45
+  min_confidence:
+    type: float
+    default: 0.30
+  min_margin:
+    type: float
+    default: 0.15
+  max_state_chars:
+    type: int
+    default: 12000
+  preserve_unknown_tools:
+    type: bool
+    default: true
+    description: Keep tools not recognized as Hermes built-ins, including plugin and MCP tools.
