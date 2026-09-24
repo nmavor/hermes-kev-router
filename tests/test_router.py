@@ -38,10 +38,12 @@ def _choice(selected, probability=0.8, confidence=0.8):
 class Context:
     def __init__(self, settings=None):
         self.settings = settings or {}
+        self.config_reads = []
         self.hooks = {}
         self.middleware = {}
 
     def get_config(self, key, default=None):
+        self.config_reads.append(key)
         return self.settings.get(key, default)
 
     def register_hook(self, name, callback):
@@ -59,6 +61,33 @@ class RouterTests(TestCase):
         settings = dict(plugin.DEFAULTS)
         answer = _choice("coding", probability=0.3, confidence=0.8)
         self.assertIsNone(plugin._validated_choice(answer, settings))
+
+    def test_settings_do_not_read_reserved_model_path(self):
+        ctx = Context()
+        settings = plugin._settings(ctx)
+        self.assertEqual(settings["kev_model"], "kev-latest")
+        self.assertIn("kev_model", ctx.config_reads)
+        self.assertNotIn("model", ctx.config_reads)
+
+    def test_weather_criteria_prefer_narrow_research_profile(self):
+        ctx = Context()
+
+        def classify(_endpoint, _model, _state, questions, _timeout):
+            profile = questions["profile"]
+            self.assertIn("weather", profile["criteria"]["research"])
+            self.assertIn("three distinct", profile["instructions"])
+            return {"profile": _choice("research")}
+
+        with mock.patch.object(plugin, "_system_one", side_effect=classify):
+            plugin._pre_llm_call(
+                ctx,
+                session_id="session",
+                turn_id="weather",
+                user_message="weather in Ridgewood 10 days",
+                conversation_history=[],
+                platform="cli",
+            )
+        self.assertEqual(plugin._decisions[("session", "weather")].profile, "research")
 
     def test_chat_keeps_skill_and_unknown_plugin_tools(self):
         tools = [

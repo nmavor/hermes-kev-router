@@ -1,5 +1,5 @@
 name: hermes-kev-router
-version: 0.1.0
+version: 0.1.1
 description: Local Kev pre-turn routing that narrows built-in tool schemas without modifying Hermes core.
 author: nmavor
 license: MIT
@@ -27,7 +27,7 @@ config_schema:
   endpoint:
     type: str
     default: http://127.0.0.1:8009/v1/systemone
-  model:
+  kev_model:
     type: str
     default: kev-latest
   timeout:

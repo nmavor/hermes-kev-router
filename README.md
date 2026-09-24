@@ -52,7 +52,7 @@ plugins:
       settings:
         enabled: true
         endpoint: http://127.0.0.1:8009/v1/systemone
-        model: kev-latest
+        kev_model: kev-latest
         timeout: 1.25
         min_probability: 0.45
         min_confidence: 0.30

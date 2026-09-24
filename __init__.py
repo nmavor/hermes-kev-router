@@ -19,14 +19,14 @@ from dataclasses import dataclass
 from typing import Any
 
 PLUGIN_NAME = "hermes-kev-router"
-PLUGIN_VERSION = "0.1.0"
+PLUGIN_VERSION = "0.1.1"
 
 logger = logging.getLogger(__name__)
 
 DEFAULTS: dict[str, Any] = {
     "enabled": True,
     "endpoint": "http://127.0.0.1:8009/v1/systemone",
-    "model": "kev-latest",
+    "kev_model": "kev-latest",
     "timeout": 1.25,
     "min_probability": 0.45,
     "min_confidence": 0.30,
@@ -37,13 +37,19 @@ DEFAULTS: dict[str, Any] = {
 
 _PROFILES = ("chat", "research", "coding", "browser", "personal", "automation", "full")
 _PROFILE_DESCRIPTIONS = {
-    "chat": "Conversation, explanation, or greeting that needs no external action",
-    "research": "Finding and reading information from the web or prior sessions",
+    "chat": "Conversation, explanation, or greeting needing no external action",
+    "research": (
+        "Information lookup such as weather, news, facts, web search, reading a page, "
+        "or prior-session search"
+    ),
     "coding": "Software development, repository inspection, editing, testing, or debugging",
-    "browser": "Interactive browser navigation, page interaction, or visual web work",
-    "personal": "Personal memory, home services, media, or account-connected assistance",
-    "automation": "Scheduled, repeated, delegated, or multi-system actions",
-    "full": "A broad task that clearly requires capabilities from several profiles",
+    "browser": "Interactive browser navigation or page interaction; not ordinary web lookup",
+    "personal": "Personal memory, Home Assistant, media, or connected-account assistance",
+    "automation": "Scheduling, repeated jobs, delegation, or coordinated system actions",
+    "full": (
+        "Last resort only when one request clearly needs at least three different capability "
+        "families; never choose for one lookup or one task"
+    ),
 }
 
 _SKILL_TOOLS = frozenset({"skills_list", "skill_view", "skill_manage"})
@@ -230,7 +236,7 @@ def _settings(ctx: Any) -> dict[str, Any]:
     return {
         "enabled": _as_bool(_setting(ctx, "enabled"), DEFAULTS["enabled"]),
         "endpoint": str(_setting(ctx, "endpoint") or DEFAULTS["endpoint"]),
-        "model": str(_setting(ctx, "model") or DEFAULTS["model"]),
+        "kev_model": str(_setting(ctx, "kev_model") or DEFAULTS["kev_model"]),
         "timeout": timeout,
         "min_probability": min_probability,
         "min_confidence": min_confidence,
@@ -461,13 +467,14 @@ def _pre_llm_call(ctx: Any, **event: Any) -> None:
         )
         answers = _system_one(
             settings["endpoint"],
-            settings["model"],
+            settings["kev_model"],
             state,
             {
                 "profile": {
                     "type": "choice",
                     "instructions": (
-                        "Choose the narrowest Hermes capability profile sufficient for this turn."
+                        "Choose the narrowest sufficient profile. Use full only for requests "
+                        "requiring at least three distinct profile families."
                     ),
                     "criteria": _PROFILE_DESCRIPTIONS,
                 }
@@ -477,6 +484,12 @@ def _pre_llm_call(ctx: Any, **event: Any) -> None:
         profile = _validated_choice(answers.get("profile"), settings)
         if profile is not None:
             _remember(event.get("session_id"), event.get("turn_id"), profile)
+            logger.info("Kev routed turn %s to %s", event.get("turn_id"), profile)
+        else:
+            logger.info(
+                "Kev routing was uncertain for turn %s; preserving all tools",
+                event.get("turn_id"),
+            )
     except Exception:
         logger.debug("Kev profile routing failed open", exc_info=True)
 
