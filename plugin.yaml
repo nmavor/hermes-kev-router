@@ -1,4 +1,3 @@
-manifest_version: 2
 name: hermes-kev-router
 version: 0.1.0
 description: Local Kev pre-turn routing that narrows built-in tool schemas without modifying Hermes core.
